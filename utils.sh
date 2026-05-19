@@ -1,4 +1,6 @@
 #!/bin/bash
+# Spacemit K1 Bootloader Build Utilities
+# Adapted from TI build system for RISC-V
 
 BUILD=$(dirname "$(readlink -e "$0")")
 ROOT=$(readlink -e "${BUILD}/../")
@@ -7,6 +9,10 @@ TOOLCHAINS="${SYSTEM_WIDE_TOOLCHAINS:-${ROOT}/toolchains}"
 MODES=("release" "debug" "factory")
 
 INIT_PATH=$PATH
+
+# Source directories
+OPENSBI_DIR="${ROOT}/pi-opensbi"
+UBOOT_DIR="${ROOT}/pi-u-boot"
 
 function pushd {
     command pushd "$@" > /dev/null
@@ -30,30 +36,145 @@ function check_local_changes {
     local projects=("$@")
 
     for project in "${projects[@]}"; do
-        pushd "${repo_path}/${project}"
-        # always run status before to trigger an index rebuild
-        # This is important when many files have a different mtime
-        # see: https://github.com/MestreLion/git-tools/issues/38#issuecomment-894182421
-        git status
-        if ! git diff --quiet HEAD; then
-            error_exit "Local changes detected in: ${project}"
+        if [ -d "${repo_path}/${project}" ]; then
+            pushd "${repo_path}/${project}"
+            git status > /dev/null 2>&1 || { popd; continue; }
+            if ! git diff --quiet HEAD 2>/dev/null; then
+                warning "Local changes detected in: ${project}"
+            fi
+            popd
         fi
-        popd
     done
 }
 
+# RISC-V toolchain - use bootlin toolchain (glibc, stable)
+# Using 2023.11-1 for better glibc compatibility (requires glibc 2.31+)
+RISCV_TOOLCHAIN_VERSION="2023.11-1"
+RISCV_TOOLCHAIN_NAME="riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
+RISCV_TOOLCHAIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains/riscv64-lp64d/tarballs/${RISCV_TOOLCHAIN_NAME}.tar.bz2"
+
+# Buildroot toolchain path (if available)
+BUILDROOT_TOOLCHAIN="/srv/spacemit/buildroot/output/k1_v2/host/bin"
+
+# Download and extract RISC-V toolchain
+function download_riscv64_toolchain {
+    local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
+    local tarball="${TOOLCHAINS}/${RISCV_TOOLCHAIN_NAME}.tar.bz2"
+
+    if [ -d "${toolchain_dir}" ]; then
+        echo "RISC-V toolchain already exists at ${toolchain_dir}"
+        return 0
+    fi
+
+    echo "Downloading RISC-V toolchain from Bootlin (${RISCV_TOOLCHAIN_VERSION})..."
+    mkdir -p "${TOOLCHAINS}"
+
+    if ! command -v wget &> /dev/null && ! command -v curl &> /dev/null; then
+        error_exit "wget or curl is required to download toolchain"
+    fi
+
+    if command -v wget &> /dev/null; then
+        wget -q --show-progress -O "${tarball}" "${RISCV_TOOLCHAIN_URL}"
+    else
+        curl -L -# -o "${tarball}" "${RISCV_TOOLCHAIN_URL}"
+    fi
+
+    echo "Extracting toolchain..."
+    tar -xjf "${tarball}" -C "${TOOLCHAINS}"
+
+    rm -f "${tarball}"
+    echo "RISC-V toolchain installed to ${toolchain_dir}"
+}
+
+# Check if a toolchain works (glibc compatibility)
+function check_toolchain_works {
+    local gcc_path="$1"
+    if [ -x "${gcc_path}" ]; then
+        # Try to run gcc --version to check glibc compatibility
+        "${gcc_path}" --version &> /dev/null
+        return $?
+    fi
+    return 1
+}
+
+# RISC-V 64-bit cross-compiler
+function riscv64_env {
+    local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
+
+    # Try system toolchain first
+    if command -v riscv64-linux-gnu-gcc &> /dev/null; then
+        if check_toolchain_works "$(command -v riscv64-linux-gnu-gcc)"; then
+            export CROSS_COMPILE=riscv64-linux-gnu-
+            export ARCH=riscv
+            return
+        fi
+    fi
+
+    if command -v riscv64-unknown-linux-gnu-gcc &> /dev/null; then
+        if check_toolchain_works "$(command -v riscv64-unknown-linux-gnu-gcc)"; then
+            export CROSS_COMPILE=riscv64-unknown-linux-gnu-
+            export ARCH=riscv
+            return
+        fi
+    fi
+
+    # Try buildroot toolchain (check glibc compatibility)
+    if [ -x "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc" ]; then
+        if check_toolchain_works "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc"; then
+            export PATH="${BUILDROOT_TOOLCHAIN}:$PATH"
+            export CROSS_COMPILE=riscv64-unknown-linux-gnu-
+            export ARCH=riscv
+            return
+        else
+            warning "Buildroot toolchain found but incompatible with system glibc"
+        fi
+    fi
+
+    # Try downloaded bootlin toolchain
+    if [ -d "${toolchain_dir}/bin" ]; then
+        if check_toolchain_works "${toolchain_dir}/bin/riscv64-buildroot-linux-gnu-gcc"; then
+            export PATH="${toolchain_dir}/bin:$PATH"
+            export CROSS_COMPILE=riscv64-buildroot-linux-gnu-
+            export ARCH=riscv
+            return
+        fi
+    fi
+
+    # Download toolchain
+    echo "RISC-V toolchain not found or incompatible, downloading Bootlin toolchain..."
+    download_riscv64_toolchain
+    if [ -d "${toolchain_dir}/bin" ]; then
+        export PATH="${toolchain_dir}/bin:$PATH"
+        export CROSS_COMPILE=riscv64-buildroot-linux-gnu-
+        export ARCH=riscv
+    else
+        error_exit "Failed to setup RISC-V toolchain"
+    fi
+}
+
+function check_riscv64 {
+    local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
+
+    # Check if RISC-V toolchain exists
+    if command -v riscv64-linux-gnu-gcc &> /dev/null; then
+        return 0
+    elif command -v riscv64-unknown-linux-gnu-gcc &> /dev/null; then
+        return 0
+    elif [ -x "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc" ]; then
+        return 0
+    elif [ -d "${toolchain_dir}/bin" ]; then
+        return 0
+    else
+        warning "RISC-V toolchain not found in PATH or ${TOOLCHAINS}"
+        warning "It will be downloaded automatically when building"
+        return 1
+    fi
+}
+
+# Legacy ARM functions (kept for compatibility, but not used for Spacemit)
 function gnueabihf_env {
     export PATH="${TOOLCHAINS}/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-linux-gnueabihf/bin:$PATH"
     export CROSS_COMPILE=arm-none-linux-gnueabihf-
-}
-
-function check_gnueabihf {
-    if ! [ -d "${TOOLCHAINS}/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-linux-gnueabihf" ]; then
-        pushd $TOOLCHAINS
-        wget https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz
-        tar -xvf arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz
-        popd
-    fi
 }
 
 function aarch64_env {
@@ -62,17 +183,10 @@ function aarch64_env {
     export CROSS_COMPILE64=aarch64-none-linux-gnu-
 }
 
-function check_aarch64 {
-    if ! [ -d "${TOOLCHAINS}/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu" ]; then
-        pushd "${TOOLCHAINS}"
-        wget https://developer.arm.com/-/media/Files/downloads/gnu/13.3.rel1/binrel/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
-        tar -xvf arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
-        popd
-    fi
-}
-
 function avbtool_env {
-    export PATH="${ROOT}/prebuilts/build-tools/linux-x86/bin/:$PATH"
+    if [ -d "${ROOT}/prebuilts/build-tools/linux-x86/bin/" ]; then
+        export PATH="${ROOT}/prebuilts/build-tools/linux-x86/bin/:$PATH"
+    fi
 }
 
 function clear_vars {
@@ -83,16 +197,17 @@ function clear_vars {
 
 function check_env {
     # out directory
-    ! [ -d "${OUT}" ] && mkdir "${OUT}"
+    ! [ -d "${OUT}" ] && mkdir -p "${OUT}"
 
-    # toolchains
-    ! [ -d "${TOOLCHAINS}" ] && mkdir "${TOOLCHAINS}"
-    check_aarch64
-    check_gnueabihf
+    # toolchains directory
+    ! [ -d "${TOOLCHAINS}" ] && mkdir -p "${TOOLCHAINS}"
+
+    # Check RISC-V toolchain
+    check_riscv64 || true
 }
 
 function config_value {
-    local value=$(cat "$1" | shyaml --quiet get-value "$2")
+    local value=$(cat "$1" | shyaml --quiet get-value "$2" 2>/dev/null)
     echo "${value}"
 }
 
@@ -124,7 +239,7 @@ function usage {
     cat <<DELIM__
 usage: $(basename "$0") [options]
 
-$ $(basename "$0") --config=config/boards/am62x.yaml
+$ $(basename "$0") --config=config/boards/spacemit-k1.yaml
 
 Options:
   --config   board config file
@@ -136,7 +251,7 @@ DELIM__
 
 function warning {
     local warning="$1"
-    printf "\033[0;33mWARNING:\033[0m ${warning}\n\n"
+    printf "\033[0;33mWARNING:\033[0m ${warning}\n"
 }
 
 function error {

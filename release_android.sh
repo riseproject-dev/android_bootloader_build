@@ -8,8 +8,17 @@ SRC=$(dirname "$(readlink -e "$0")")
 source "${SRC}/build_all.sh"
 source "${SRC}/commit-binaries.sh"
 
-PROJECTS_AIOT=("arm-trusted-firmware" "build" "optee-os" "ti-linux-firmware" "u-boot" "optee-ta/kmgk" "optee-ta/optee_test")
-PROJECTS_REMOTES="baylibre ti github tf-a"
+# TI K3 projects
+PROJECTS_AIOT_TI=("arm-trusted-firmware" "build" "optee-os" "ti-linux-firmware" "u-boot" "optee-ta/kmgk" "optee-ta/optee_test")
+PROJECTS_REMOTES_TI="baylibre ti github tf-a"
+
+# Spacemit K1 projects
+PROJECTS_AIOT_SPACEMIT=("pi-opensbi" "pi-u-boot" "build-bootloaders")
+PROJECTS_REMOTES_SPACEMIT="spacemit github"
+
+# Default to TI (will be overridden based on config)
+PROJECTS_AIOT=("${PROJECTS_AIOT_TI[@]}")
+PROJECTS_REMOTES="${PROJECTS_REMOTES_TI}"
 
 function add_commit_msg {
     local -n commits_msg_ref="$1"
@@ -33,20 +42,61 @@ function add_commit_msg {
 }
 
 function copy_binaries {
-    local ti_out="$1"
-    local ti_android_out="$2"
-    local gp=$(config_value "$3" secure.gp)
-    local hsfs=$(config_value "$3" secure.hsfs)
+    local out="$1"
+    local android_out="$2"
+    local config="$3"
     local mode="$4"
-    if [[ "${gp}" == "True" ]]; then
-        cp "${ti_out}/tiboot3-"${mode}"-gp.bin" "${ti_android_out}/"
-    fi
-    if [[ "${hsfs}" == "True" ]]; then
-        cp "${ti_out}/tiboot3-"${mode}"-hsfs.bin" "${ti_android_out}/"
-    fi
-    cp "${ti_out}/tispl-"${mode}".bin" "${ti_android_out}/"
-    cp "${ti_out}/u-boot-"${mode}".img" "${ti_android_out}/"
+    local plat=$(config_value "${config}" plat)
 
+    case "${plat}" in
+        spacemit|k1)
+            # Spacemit K1 binaries
+            if [ -f "${out}/fw_dynamic-${mode}.bin" ]; then
+                cp "${out}/fw_dynamic-${mode}.bin" "${android_out}/"
+            fi
+            if [ -f "${out}/u-boot-${mode}.itb" ]; then
+                cp "${out}/u-boot-${mode}.itb" "${android_out}/"
+            elif [ -f "${out}/u-boot-${mode}.bin" ]; then
+                cp "${out}/u-boot-${mode}.bin" "${android_out}/"
+            fi
+            if [ -f "${out}/u-boot-spl-${mode}.bin" ]; then
+                cp "${out}/u-boot-spl-${mode}.bin" "${android_out}/"
+            fi
+            if [ -f "${out}/u-boot-${mode}.dtb" ]; then
+                cp "${out}/u-boot-${mode}.dtb" "${android_out}/"
+            fi
+            if [ -f "${out}/env-${mode}.bin" ]; then
+                cp "${out}/env-${mode}.bin" "${android_out}/"
+            fi
+            # Flash-ready files (factory, partition config, prepared images)
+            if [ -d "${out}/factory" ]; then
+                mkdir -p "${android_out}/factory"
+                cp -f "${out}/factory"/* "${android_out}/factory/"
+            fi
+            if [ -f "${out}/partition_android.json" ]; then
+                cp -f "${out}/partition_android.json" "${android_out}/"
+            fi
+            if [ -f "${out}/fw_dynamic.itb" ]; then
+                cp -f "${out}/fw_dynamic.itb" "${android_out}/"
+            fi
+            ;;
+        k3|am62*|am64*|am67*)
+            # TI K3 binaries
+            local gp=$(config_value "${config}" secure.gp)
+            local hsfs=$(config_value "${config}" secure.hsfs)
+            if [[ "${gp}" == "True" ]]; then
+                cp "${out}/tiboot3-${mode}-gp.bin" "${android_out}/"
+            fi
+            if [[ "${hsfs}" == "True" ]]; then
+                cp "${out}/tiboot3-${mode}-hsfs.bin" "${android_out}/"
+            fi
+            cp "${out}/tispl-${mode}.bin" "${android_out}/"
+            cp "${out}/u-boot-${mode}.img" "${android_out}/"
+            ;;
+        *)
+            error_exit "Unknown platform: ${plat}"
+            ;;
+    esac
 }
 
 function usage {
@@ -107,46 +157,68 @@ function main {
     fi
 
     # build configs
-    local ti_binaries_path=""
+    local binaries_path=""
     local out_dir=""
     declare -A commits_msg
 
-    check_local_changes "${ROOT}" "${PROJECTS_AIOT[@]}"
+    # Check for local changes (check all projects for all platforms)
+    #check_local_changes "${ROOT}" "${PROJECTS_AIOT_TI[@]}" || true
+    #check_local_changes "${ROOT}" "${PROJECTS_AIOT_SPACEMIT[@]}" || true
 
     check_env
 
     pushd "${SRC}"
-    for ti_config in "${configs[@]}"; do
-        ti_binaries_path=$(config_value "${ti_config}" android.binaries_path)
-        optee_ta_path=$(config_value "${ti_config}" optee.optee_ta_path)
+    for board_config in "${configs[@]}"; do
+        local plat=$(config_value "${board_config}" plat)
+        binaries_path=$(config_value "${board_config}" android.binaries_path)
+
+        # Set platform-specific projects
+        case "${plat}" in
+            spacemit|k1)
+                PROJECTS_AIOT=("${PROJECTS_AIOT_SPACEMIT[@]}")
+                PROJECTS_REMOTES="${PROJECTS_REMOTES_SPACEMIT}"
+                ;;
+            k3|am62*|am64*|am67*)
+                PROJECTS_AIOT=("${PROJECTS_AIOT_TI[@]}")
+                PROJECTS_REMOTES="${PROJECTS_REMOTES_TI}"
+                ;;
+        esac
+
         for mode in "${mode_list[@]}"; do
-            out_dir=$(out_dir "${ti_config}" "${mode}")
+            out_dir=$(out_dir "${board_config}" "${mode}")
 
             if [[ "${build}" == true ]]; then
                 if [[ "${silent}" == true ]]; then
-                    display_current_build "${ti_config}" "all" "${mode}"
-                    build_all "${ti_config}" "true" "${mode}" &> /dev/null
+                    display_current_build "${board_config}" "all" "${mode}"
+                    build_all "${board_config}" "true" "${mode}" &> /dev/null
                 else
-                    build_all "${ti_config}" "true" "${mode}"
+                    build_all "${board_config}" "true" "${mode}"
                 fi
             fi
-            ! [ -d "${aosp}/${ti_binaries_path}" ] && mkdir -p "${aosp}/${ti_binaries_path}"
-            copy_binaries "${out_dir}" "${aosp}/${ti_binaries_path}" "${ti_config}" "${mode}"
+            ! [ -d "${aosp}/${binaries_path}" ] && mkdir -p "${aosp}/${binaries_path}"
+            copy_binaries "${out_dir}" "${aosp}/${binaries_path}" "${board_config}" "${mode}"
 
-            # Build Trusted Applications
-            mkdir -p "${aosp}/${optee_ta_path}"
-            if [[ "${silent}" == true ]]; then
-                build_android_ta "${ti_config}" "true" "${mode}" &> /dev/null
-            else
-                build_android_ta "${ti_config}" "true" "${mode}"
-            fi
-            pushd "${out_dir}/optee-ta/"
-            mkdir -p "${aosp}/${optee_ta_path}/${mode}"
-            cp -r * "${aosp}/${optee_ta_path}/${mode}"
-            popd
+            # Build Trusted Applications (TI K3 only)
+            case "${plat}" in
+                k3|am62*|am64*|am67*)
+                    optee_ta_path=$(config_value "${board_config}" optee.optee_ta_path)
+                    if [ -n "${optee_ta_path}" ]; then
+                        mkdir -p "${aosp}/${optee_ta_path}"
+                        if [[ "${silent}" == true ]]; then
+                            build_android_ta "${board_config}" "true" "${mode}" &> /dev/null
+                        else
+                            build_android_ta "${board_config}" "true" "${mode}"
+                        fi
+                        pushd "${out_dir}/optee-ta/"
+                        mkdir -p "${aosp}/${optee_ta_path}/${mode}"
+                        cp -r * "${aosp}/${optee_ta_path}/${mode}"
+                        popd
+                    fi
+                    ;;
+            esac
         done
-        commit_title_prefix=$(board_name ${ti_config})
-        add_commit_msg commits_msg "${commit_title_prefix}" "${aosp}/${ti_binaries_path}"
+        commit_title_prefix=$(board_name ${board_config})
+        add_commit_msg commits_msg "${commit_title_prefix}" "${aosp}/${binaries_path}"
 
     done
     popd

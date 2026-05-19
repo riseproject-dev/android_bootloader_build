@@ -4,8 +4,10 @@ set -e
 set -u
 set -o pipefail
 
-SRC=$(dirname "$(readlink -e "$0")")
-source "${SRC}/utils.sh"
+SRC=$(dirname "$(readlink -e "${BASH_SOURCE[0]}")")
+if ! type -t config_value &>/dev/null; then
+    source "${SRC}/utils.sh"
+fi
 
 KEYS="${BUILD}/.keys"
 
@@ -95,6 +97,32 @@ function get_avb_pub_key {
     fi
 }
 
+# Helper function to get AVB key path directly (for command substitution)
+# Usage: get_avb_key_path <config> [pub|priv]
+function get_avb_key_path {
+    local config="$1"
+    local key_type="${2:-priv}"
+    local key_path=""
+
+    if [[ "${key_type}" == "pub" ]]; then
+        local avb_pub_key_config=$(config_value "${config}" secure.avb_pub_key)
+        if [ -n "${avb_pub_key_config}" ] && [ -f "${avb_pub_key_config}" ]; then
+            key_path="${avb_pub_key_config}"
+        elif [ -f "${KEYS}/${AVB_PUB_KEY}" ]; then
+            key_path="${KEYS}/${AVB_PUB_KEY}"
+        fi
+    else
+        local avb_key_config=$(config_value "${config}" secure.avb_key)
+        if [ -n "${avb_key_config}" ] && [ -f "${avb_key_config}" ]; then
+            key_path="${avb_key_config}"
+        elif [ -f "${KEYS}/${AVB_KEY}" ]; then
+            key_path="${KEYS}/${AVB_KEY}"
+        fi
+    fi
+
+    echo "${key_path}"
+}
+
 function generate_avb_keys {
     local avb_key="${KEYS}/${AVB_KEY}"
     local avb_pub_key="${KEYS}/${AVB_PUB_KEY}"
@@ -148,8 +176,8 @@ function generate_secure_package {
 }
 
 
-# main
-function usage {
+# standalone main for secure.sh
+function secure_usage {
     cat <<DELIM__
 usage: $(basename "$0") function
 
@@ -157,9 +185,9 @@ Functions supported can be found in "$0"
 DELIM__
 }
 
-function main {
+function secure_main {
     if ! [ $# -eq 1 ]; then
-        usage
+        secure_usage
     else
         local command="$1"
         "${command}"
@@ -167,5 +195,5 @@ function main {
 }
 
 if [ "$0" = "$BASH_SOURCE" ]; then
-    main "$@"
+    secure_main "$@"
 fi

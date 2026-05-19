@@ -1,0 +1,49 @@
+// U-Boot Environment for Android Boot on Spacemit K1
+// This file is used with mkenvimage to create env.bin
+
+// Console settings
+console=ttyS0,115200
+loglevel=7
+
+// Boot delay
+bootdelay=1
+
+// Only scan eMMC (mmc2), skip SD card and network
+boot_targets=mmc2
+
+// Only use Android boot method (skip distro, PXE, EFI, etc.)
+bootmeths=android
+
+// MMC device (eMMC)
+mmcdev=2
+
+// Android boot settings
+android_slot_suffix=_a
+android_boot_mode=normal
+
+// Boot command - use standard boot to detect Android
+bootcmd=bootflow scan -lb
+
+// Memory addresses for loading boot images from eMMC
+android_boot_addr=0x20000000
+android_vendor_boot_addr=0x24000000
+android_init_boot_addr=0x28000000
+
+// Decompression addresses for vendor_boot and init_boot ramdisks
+vendor_boot_comp_addr_r=0x50000000
+init_boot_comp_addr_r=0x54000000
+
+// Standard load addresses
+kernel_addr_r=0x200000
+ramdisk_addr_r=0x8000000
+fdt_addr_r=0x6000000
+
+// Fastboot settings
+fastboot_flash_mmc_dev=2
+fastboot.partition-type:metadata=f2fs
+
+// Kernel command line base (will be extended by bootmeth_android)
+bootargs_base=init=/init firmware_class.path=/vendor/firmware androidboot.hardware=k1
+
+// AVB state (unlocked for development, locked for production)
+avb_state=unlocked

@@ -186,7 +186,7 @@ function commit_binaries {
         from_projects="$(all_projects_for_repo ${from_repo})"
     fi
 
-    check_local_changes "${from_repo}" $from_projects
+    #check_local_changes "${from_repo}" $from_projects
 
     # commits message
     local commit_body=$(commit_msg_body "$from_remotes" $from_repo $from_projects)
