@@ -1,6 +1,5 @@
 #!/bin/bash
 # Build OpenSBI for Spacemit K1
-# Replaces build_bl31.sh from TI build system
 
 set -e
 set -u

@@ -1,123 +1,65 @@
-# Bootloaders build tools
+# Bootloader build tools — SpacemiT K1 (Banana Pi F3)
 
-Scripts to build various bootloaders (A-TF, U-Boot, OP-TEE)
+Scripts that build the bootloader chain for the SpacemiT K1 SoC on
+the Banana Pi F3 and stage the outputs into the AOSP tree under
+`vendor/spacemit/k1/bootloader/`.
 
-Dependencies:
-``` {.sh}
-$ sudo apt install bc bison build-essential curl flex git libssl-dev python3 python3-pip meson wget -y
-$ pip3 install pycryptodome pyelftools shyaml --user
+The chain is **OpenSBI → U-Boot** (no ATF, no OP-TEE) and the
+sources are sibling repos `pi-opensbi/` and `pi-u-boot/`.
+
+## Dependencies
+
+```sh
+sudo apt install bc bison build-essential curl flex git libssl-dev \
+                 python3 python3-pip meson wget -y
+pip3 install pycryptodome pyelftools shyaml --user
 ```
 
-## Build bl31
-``` {.sh}
-usage: build_bl31.sh [options]
+The RISC-V cross-toolchain (Bootlin glibc 2023.11-1) is downloaded
+automatically on first build under `../toolchains/` — no manual
+install required.
 
-$ build_bl31.sh --config=config/boards/am62x.yaml
+## Top-level: release_android.sh
+
+Builds the full chain and stages the outputs into an AOSP tree in
+one command:
+
+```sh
+./release_android.sh --aosp=<path-to-aosp>
+```
 
 Options:
-  --config   board config file
-  --clean    (OPTIONAL) clean before build
-  --mode     (OPTIONAL) [release|debug] mode (default: release)
-  --help     (OPTIONAL) display usage
+
+| Option | Description |
+|---|---|
+| `--aosp=PATH`    | AOSP root path (required) |
+| `--commit`       | commit the new binaries into the AOSP-side vendor repo |
+| `--config=FILE`  | release a specific board config file (default: `config/boards/spacemit-k1.yaml`) |
+| `--mode=MODE`    | `release`, `debug` or `factory` — build only one mode |
+| `--no-build`     | skip rebuild, just re-stage existing artefacts |
+| `--silent`       | silence build command output |
+
+## Building one component
+
+```sh
+./build_opensbi.sh --config=config/boards/spacemit-k1.yaml
+./build_uboot.sh   --config=config/boards/spacemit-k1.yaml
 ```
 
-## Build tiboot3
-``` {.sh}
-usage: build_tiboot.sh [options]
+Common options on each: `--clean`, `--mode=[release|debug]`,
+`--help`.
 
-$ build_tiboot.sh --config=config/boards/am62x.yaml
+## Building everything for one board
 
-Options:
-  --config   board config file
-  --clean    (OPTIONAL) clean before build
-  --mode     (OPTIONAL) [release|debug] mode (default: release)
-  --help     (OPTIONAL) display usage
+```sh
+./build_all.sh --config=config/boards/spacemit-k1.yaml
 ```
 
-## Build optee
-``` {.sh}
-usage: build_optee.sh [options]
+## Helpers
 
-$ build_optee.sh --config=config/boards/am62x.yaml
-
-Options:
-  --config   board config file
-  --clean    (OPTIONAL) clean before build
-  --mode     (OPTIONAL) [release|debug] mode (default: release)
-  --help     (OPTIONAL) display usage
-```
-
-## Build tispl
-``` {.sh}
-usage: build_tispl.sh [options]
-
-$ build_tispl.sh --config=config/boards/am62x.yaml
-
-Options:
-  --config   board config file
-  --clean    (OPTIONAL) clean before build
-  --mode     (OPTIONAL) [release|debug] mode (default: release)
-  --help     (OPTIONAL) display usage
-```
-
-## Build ALL
-``` {.sh}
-usage: build_all.sh [options]
-
-$ build_all.sh --config=config/boards/am62x.yaml
-
-Options:
-  --config   board config file
-  --clean    (OPTIONAL) clean before build
-  --mode     (OPTIONAL) [release|debug] mode (default: release)
-  --help     (OPTIONAL) display usage
-```
-
-## Release Android
-``` {.sh}
-usage: release_android.sh [options]
-
-$ release_android.sh --aosp=<path-to-android-root>
-
-Options:
-  --aosp     Android Root path
-  --commit   (OPTIONAL) commit binaries in AOSP
-  --config   (OPTIONAL) release ONLY for this board config file
-  --help     (OPTIONAL) display usage
-  --no-build (OPTIONAL) don't rebuild the images
-  --silent   (OPTIONAL) silent build commands
-```
-
-## Setup Android
-``` {.sh}
-usage: setup_android.sh [options]
-
-$ setup_android.sh --aosp==<path-to-android-root> --branch=<user-name>/update-binaries
-
-Options:
-  --aosp     Android Root path
-  --branch   Branch name
-  --clean    (OPTIONAL) clean up AOSP projects
-  --help     (OPTIONAL) display usage
-```
-
-## Commit Binaries
-
-``` {.sh}
-usage: commit-binaries.sh [options]
-
-$ commit-binaries.sh --from-repo=<repo root directory> --to-repo=<repo root directory> --to-project=<project sub-path>
-
-Options:
-  --from-repo     Absolute path to the source repo
-  --from-projects (OPTIONAL) space-separated list of relative source projects. Defaults to all
-  --to-repo       Absolute path to the destination repo
-  --to-project    Relative path in the destination repo where git commit is ran
-  --title-prefix  (OPTIONAL) commit message title prefix. Defaults to "generic"
-  --dry-run       (OPTIONAL) don't commit, pass --dry-run to git instead
-  --help          (OPTIONAL) display usage
-
-Examples:
-  $ commit-binaries.sh --from-repo=/home/user/src/android-common-kernel --from-projects='common hikey-modules' \
-                       --to-repo=/home/user/src/aosp --to-project=device/amlogic/yukawa-kernel
-```
+| Script | Purpose |
+|---|---|
+| `setup_android.sh --aosp=PATH --branch=BR` | initial AOSP-side branch prep for binary commits |
+| `prepare_android_img.sh --config=... [--mode=...]` | assemble outputs under `out/` into the flash layout |
+| `commit-binaries.sh --from-repo=... --to-repo=... --to-project=...` | commit refreshed binaries with a generated message |
+| `secure.sh` | (placeholder) signing hook for factory builds |

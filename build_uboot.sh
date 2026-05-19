@@ -1,6 +1,5 @@
 #!/bin/bash
 # Build U-Boot for Spacemit K1
-# Replaces build_tispl.sh from TI build system
 
 set -e
 set -u
