@@ -33,9 +33,13 @@ function build_opensbi {
 
     pushd "${OPENSBI_DIR}"
 
-    # Clean if requested
+    # Clean if requested. Use distclean (not just clean) to wipe build/.config
+    # too — otherwise a stale .config generated from the default upstream
+    # `defconfig` (which sets CONFIG_PLATFORM_SPACEMIT_K1PRO=y) sticks around
+    # and the subsequent `make … PLATFORM_DEFCONFIG=k1_defconfig` does not
+    # regenerate it because timestamps already satisfy the make rule.
     if [[ "${clean}" == true ]]; then
-        make PLATFORM="${platform}" clean || true
+        make PLATFORM="${platform}" distclean || true
     fi
 
     # Get defconfig from board config or use default
