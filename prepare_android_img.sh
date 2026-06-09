@@ -143,6 +143,11 @@ function copy_partition_configs {
         cp -f "${CONFIG_DIR}/partition_android.json" "${out_dir}/"
     fi
 
+    # Copy SPI-NOR bootloader layout (MTD) for NOR-boot boards (MUSE-Pi-Pro)
+    if [ -f "${CONFIG_DIR}/partition_nor.json" ]; then
+        cp -f "${CONFIG_DIR}/partition_nor.json" "${out_dir}/"
+    fi
+
     # Create size-based partition links for fastboot
     # These are typically partition_<blk-size>.json
     if [ -f "${out_dir}/partition_android.json" ]; then

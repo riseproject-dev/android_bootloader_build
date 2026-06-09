@@ -58,6 +58,7 @@ function copy_binaries {
         cp -f "${out}/factory"/* "${android_out}/factory/"
     fi
     [ -f "${out}/partition_android.json" ] && cp -f "${out}/partition_android.json" "${android_out}/"
+    [ -f "${out}/partition_nor.json" ]     && cp -f "${out}/partition_nor.json"     "${android_out}/"
 }
 
 function usage {
