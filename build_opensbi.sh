@@ -16,6 +16,9 @@ function build_opensbi {
     local mode="${3:-release}"
     local out_dir=$(out_dir "${config}" "${mode}")
 
+    # Pick the OpenSBI source tree (opensbi.src override, else pi-opensbi)
+    resolve_src_dirs "${config}"
+
     display_current_build "${config}" "opensbi" "${mode}"
 
     # Get config values
