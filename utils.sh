@@ -11,8 +11,8 @@ MODES=("release" "debug" "factory")
 INIT_PATH=$PATH
 
 # Source directories
-OPENSBI_DIR="${ROOT}/pi-opensbi"
-UBOOT_DIR="${ROOT}/pi-u-boot"
+OPENSBI_DIR="${ROOT}/opensbi"
+UBOOT_DIR="${ROOT}/u-boot"
 
 function pushd {
     command pushd "$@" > /dev/null
@@ -54,7 +54,7 @@ RISCV_TOOLCHAIN_NAME="riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
 RISCV_TOOLCHAIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains/riscv64-lp64d/tarballs/${RISCV_TOOLCHAIN_NAME}.tar.bz2"
 
 # Buildroot toolchain path (if available)
-BUILDROOT_TOOLCHAIN="/srv/spacemit/buildroot/output/k1_v2/host/bin"
+BUILDROOT_TOOLCHAIN="${TOOLCHAINS}/xuantie-gnu-toolchain-3.0.1/bin"
 
 # Download and extract RISC-V toolchain
 function download_riscv64_toolchain {

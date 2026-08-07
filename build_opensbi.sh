@@ -35,16 +35,16 @@ function build_opensbi {
 
     # Clean if requested. Use distclean (not just clean) to wipe build/.config
     # too — otherwise a stale .config generated from the default upstream
-    # `defconfig` (which sets CONFIG_PLATFORM_SPACEMIT_K1PRO=y) sticks around
-    # and the subsequent `make … PLATFORM_DEFCONFIG=k1_defconfig` does not
-    # regenerate it because timestamps already satisfy the make rule.
+    # `defconfig` sticks around and the subsequent
+    # `make … PLATFORM_DEFCONFIG=XXXX_defconfig` does not regenerate it because
+    # timestamps already satisfy the make rule.
     if [[ "${clean}" == true ]]; then
         make PLATFORM="${platform}" distclean || true
     fi
 
     # Get defconfig from board config or use default
     local defconfig=$(config_value "${config}" opensbi.defconfig)
-    [ -z "${defconfig}" ] && defconfig="k1_defconfig"
+    [ -z "${defconfig}" ] && defconfig="defconfig"
 
     # Build flags based on mode
     local debug_flags=""
@@ -64,8 +64,8 @@ function build_opensbi {
     # Copy output - OpenSBI generates fw_dynamic.bin
     local fw_dynamic="build/platform/${platform}/firmware/fw_dynamic.bin"
     if [ -f "${fw_dynamic}" ]; then
-        cp "${fw_dynamic}" "${out_dir}/fw_dynamic-${mode}.bin"
-        echo "OpenSBI built: ${out_dir}/fw_dynamic-${mode}.bin"
+        cp "${fw_dynamic}" "${out_dir}/fw_dynamic.bin"
+        echo "OpenSBI built: ${out_dir}/fw_dynamic.bin"
     else
         error_exit "OpenSBI build failed - fw_dynamic.bin not found"
     fi

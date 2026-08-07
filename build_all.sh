@@ -18,20 +18,35 @@ function build_all {
     local clean="${2:-false}"
     local mode="${3:-release}"
     local out_dir=$(out_dir "${config}" "${mode}")
+    local plat=$(config_value "$1" plat)
 
     if [[ "${clean}" == true ]] && [ -d "${out_dir}" ]; then
         rm -rf "${out_dir}"
     fi
 
-    # SpacemiT K1 boot chain: OpenSBI -> U-Boot -> Android flash images
+    # build firmware
     build_opensbi "${config}" "${clean}" "${mode}"
     build_uboot "${config}" "${clean}" "${mode}"
-    prepare_android_images "${config}" "${mode}" "${out_dir}" "false"
 
-    # secure package
-    if [[ "${mode}" == "factory" ]]; then
-        generate_secure_package "${config}" "${out_dir}"
-    fi
+    # extract boot binaries from zhihesdk
+    tar xzf "${SRC}/downloads/zhihesdk-local-a210_evb.tar.gz" \
+        --strip-components=2 -C "${out_dir}" \
+        --wildcards "rootfs/boot/*.bin"
+
+    # copy kernel dtb to out
+    cp "${SRC}"/downloads/*.dtb "${out_dir}"
+
+    # create fit image
+    ITS_FILE="${UBOOT_DIR}/board/zhihe/${plat}/riscv-boot.its"
+    GENDISK="${UBOOT_DIR}/board/zhihe/common/script/gendisk.sh"
+    PATH="$PATH:${UBOOT_DIR}/tools/"
+    ${GENDISK} --fit "${ITS_FILE}" "${out_dir}" "${out_dir}/riscv-boot.itb"
+
+    # generate loader image
+    BOOTZERO=bootzero2.bin # (a210)
+    ${GENDISK} --image "${out_dir}/${BOOTZERO}" "${out_dir}/u-boot-spl.bin" \
+               "${out_dir}/riscv-boot.itb" "${out_dir}"
+    cp "${out_dir}/btz-with-uboot-rvbl.bin" "${out_dir}/emmc_boot-loader.img"
 }
 
 if [ "$0" = "$BASH_SOURCE" ]; then

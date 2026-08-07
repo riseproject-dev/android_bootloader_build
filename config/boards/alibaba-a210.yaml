@@ -1,0 +1,4 @@
+plat: a210-evb
+
+uboot:
+  defconfig: a210_evb_defconfig
