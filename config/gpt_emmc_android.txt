@@ -1,0 +1,28 @@
+label: gpt
+device: dev_mmc0blkp
+unit: sectors
+first-lba: 512KiB
+last-lba: 7GiB
+
+name=factory,              start=512KiB, size=  32KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4
+name=uboot_env,            start=  1MiB, size=  32KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4
+name=misc,                 start=  2MiB, size=   1MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=53208868-ca57-4d97-b0e1-9999376898ba
+name=vbmeta_a,                           size=   1MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=00fce30d-c5e3-4503-a8e9-538758144e6c
+name=vbmeta_b,                           size=   1MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=67d0f644-45b4-4c25-8f34-d8e52c366fdf
+name=boot_a,                             size=  40MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=04fb8c79-34ec-403e-ad5d-db205c76eff1
+name=boot_b,                             size=  40MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=999c1c6d-eb10-4656-a4ea-0bd5a88fa4e2
+name=init_boot_a,                        size=   8MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=a9fc070d-bd33-4af5-96c6-80a628292524
+name=init_boot_b,                        size=   8MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=805d30da-9cd5-4562-bd6e-050112f4a98e
+name=vendor_boot_a,                      size=  32MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=5e4e80ec-5aae-4653-ae21-2b16139330fb
+name=vendor_boot_b,                      size=  32MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=ff9ab5f9-7903-4fc1-91f2-d8cb133b3653
+name=dtbo_a,                             size=   8MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=f6ee14ec-4a91-4125-8f9b-82a8d6bab62f
+name=dtbo_b,                             size=   8MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=66a105bd-2ebb-43f6-9966-6969d76b02d6
+name=vbmeta_vendor_dlkm_a,               size=  64KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=2d1cf2c6-728b-49d2-9300-2476cbdf9e40
+name=vbmeta_vendor_dlkm_b,               size=  64KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=9bad2292-b284-4423-9303-a5e5bb108145
+name=vbmeta_system_dlkm_a,               size=  64KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=f08e1438-064c-49da-8e5c-d370736e0bee
+name=vbmeta_system_dlkm_b,               size=  64KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=78856536-2754-4562-a59d-2be63b28aa33
+name=frp,                                size= 512KiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=678b0bec-59f6-4b51-a521-80dc1d17a9f5
+name=persist,                            size=  32MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=8171df3b-4f18-4380-8e57-fb55ee0384fd
+name=super,                start=256MiB, size=4608MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=91c6183a-1cb8-4d88-b020-4026db579dd8
+name=metadata,                           size=  64MiB, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=394e74d5-aab2-45b9-980b-f33cedfc6ce7
+name=userdata,                                          type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, uuid=0f194441-adc1-48f4-8995-406fda0d7823

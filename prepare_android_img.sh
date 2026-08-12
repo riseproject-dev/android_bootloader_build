@@ -302,6 +302,7 @@ function create_flash_zip {
         "partition_*.json"
         "fastboot.yaml"
         "genimage.cfg"
+        "emmc-gpt_primary.img"
     )
 
     # Add factory directory
