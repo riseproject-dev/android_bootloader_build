@@ -5,4 +5,5 @@ uboot:
   defconfig_fragments: a210_android.config
 
 android:
+  binaries_path: vendor/alibaba/a210/bootloader
   emmc_size: 8G

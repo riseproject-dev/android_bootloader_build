@@ -51,6 +51,13 @@ function copy_binaries {
     [ -f "${out}/u-boot-spl-${mode}.bin" ] && cp "${out}/u-boot-spl-${mode}.bin" "${android_out}/"
     [ -f "${out}/u-boot-${mode}.dtb" ]     && cp "${out}/u-boot-${mode}.dtb"     "${android_out}/"
     [ -f "${out}/env-${mode}.bin" ]        && cp "${out}/env-${mode}.bin"       "${android_out}/"
+    [ -f "${out}/emmc-uboot_env.img" ]     && cp -f "${out}/emmc-uboot_env.img" "${android_out}/"
+
+    # Alibaba A210 (Zhihe) eMMC boot chain
+    [ -f "${out}/bootzero-rvbl.bin" ]        && cp -f "${out}/bootzero-rvbl.bin"        "${android_out}/"
+    [ -f "${out}/spl-with-fit-rvbl.bin" ]    && cp -f "${out}/spl-with-fit-rvbl.bin"    "${android_out}/"
+    [ -f "${out}/emmc_boot-loader.img" ]     && cp -f "${out}/emmc_boot-loader.img"     "${android_out}/"
+    [ -f "${out}/emmc-gpt_primary.img" ]     && cp -f "${out}/emmc-gpt_primary.img"     "${android_out}/"
 
     # Flash-ready files (factory blobs, partition layout)
     if [ -d "${out}/factory" ]; then
@@ -59,6 +66,8 @@ function copy_binaries {
     fi
     [ -f "${out}/partition_android.json" ] && cp -f "${out}/partition_android.json" "${android_out}/"
     [ -f "${out}/partition_nor.json" ]     && cp -f "${out}/partition_nor.json"     "${android_out}/"
+
+    return 0
 }
 
 function usage {
