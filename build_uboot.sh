@@ -18,6 +18,7 @@ function build_uboot {
     local mode="${3:-release}"
     local out_dir=$(out_dir "${config}" "${mode}")
     local defconfig=$(config_value "${config}" uboot.defconfig)
+    local fragments=$(config_value "${config}" uboot.defconfig_fragments)
 
     display_current_build "${config}" "uboot" "${mode}"
 
@@ -36,8 +37,17 @@ function build_uboot {
     clear_vars
     riscv64_env
 
-    # generate defconfig
-    make "${defconfig}"
+    # generate defconfig, merging any configured fragments (uboot.defconfig_fragments
+    # in the board yaml) on top of the base defconfig
+    if [ -n "${fragments}" ]; then
+        local fragment_paths=()
+        for frag in ${fragments}; do
+            fragment_paths+=("${SRC}/config/defconfig_fragment/${frag}")
+        done
+        ./scripts/kconfig/merge_config.sh "configs/${defconfig}" "${fragment_paths[@]}"
+    else
+        make "${defconfig}"
+    fi
 
     # generate u-boot and spl images
     make -j"$(nproc)"

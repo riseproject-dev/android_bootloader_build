@@ -2,3 +2,7 @@ plat: a210-evb
 
 uboot:
   defconfig: a210_evb_defconfig
+  defconfig_fragments: a210_android.config
+
+android:
+  emmc_size: 8G
