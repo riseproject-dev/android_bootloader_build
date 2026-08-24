@@ -35,7 +35,7 @@ function build_uboot {
     fi
 
     clear_vars
-    riscv64_env
+    riscv64_env "${config}"
 
     # generate defconfig, merging any configured fragments (uboot.defconfig_fragments
     # in the board yaml) on top of the base defconfig

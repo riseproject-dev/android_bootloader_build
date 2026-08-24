@@ -27,7 +27,7 @@ function build_opensbi {
 
     # Setup environment
     clear_vars
-    riscv64_env
+    riscv64_env "${config}"
 
     mkdir -p "${out_dir}"
 

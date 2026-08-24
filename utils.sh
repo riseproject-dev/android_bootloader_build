@@ -54,17 +54,48 @@ RISCV_TOOLCHAIN_NAME="riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
 RISCV_TOOLCHAIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains/riscv64-lp64d/tarballs/${RISCV_TOOLCHAIN_NAME}.tar.bz2"
 
 # Buildroot toolchain path (if available)
-BUILDROOT_TOOLCHAIN="${TOOLCHAINS}/xuantie-gnu-toolchain-3.0.1/bin"
+XUANTIE_TOOLCHAIN_NAME="xuantie-gnu-toolchain-3.0.1"
+XUANTIE_TOOLCHAIN_TARBALL="${BUILD}/downloads/${XUANTIE_TOOLCHAIN_NAME}.tar.gz"
+BUILDROOT_TOOLCHAIN="${TOOLCHAINS}/${XUANTIE_TOOLCHAIN_NAME}/bin"
+
+# The Bootlin toolchain (used by default, see riscv64_env below) is not
+# compatible with the Alibaba A210: it needs the Xuantie toolchain shipped
+# (via Git LFS) in downloads/. Detect that board so we can extract it
+# automatically instead of silently falling back to the incompatible Bootlin
+# toolchain.
+function is_a210_board {
+    local config="${1:-}"
+    [ -z "${config}" ] && return 1
+    local plat=$(config_value "${config}" plat)
+    [[ "${plat}" == "a210-evb" ]]
+}
+
+function extract_xuantie_toolchain {
+    local toolchain_dir="${TOOLCHAINS}/${XUANTIE_TOOLCHAIN_NAME}"
+
+    if [ -d "${toolchain_dir}" ]; then
+        return 0
+    fi
+
+    if [ ! -f "${XUANTIE_TOOLCHAIN_TARBALL}" ]; then
+        warning "Xuantie toolchain not found (expected tarball at ${XUANTIE_TOOLCHAIN_TARBALL})"
+        return 1
+    fi
+
+    if head -c 30 "${XUANTIE_TOOLCHAIN_TARBALL}" | grep -q "git-lfs"; then
+        error_exit "${XUANTIE_TOOLCHAIN_TARBALL} is a Git LFS pointer, not the actual archive.
+        Run 'git lfs pull' in this repo to fetch it, then re-run the build."
+    fi
+
+    echo "Extracting Xuantie toolchain (required for A210) to ${TOOLCHAINS}..."
+    mkdir -p "${TOOLCHAINS}"
+    tar xzf "${XUANTIE_TOOLCHAIN_TARBALL}" -C "${TOOLCHAINS}"
+    echo "Xuantie toolchain installed to ${toolchain_dir}"
+}
 
 # Download and extract RISC-V toolchain
 function download_riscv64_toolchain {
     local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
-    local tarball="${TOOLCHAINS}/${RISCV_TOOLCHAIN_NAME}.tar.bz2"
-
-    if [ -d "${toolchain_dir}" ]; then
-        echo "RISC-V toolchain already exists at ${toolchain_dir}"
-        return 0
-    fi
 
     echo "Downloading RISC-V toolchain from Bootlin (${RISCV_TOOLCHAIN_VERSION})..."
     mkdir -p "${TOOLCHAINS}"
@@ -99,7 +130,13 @@ function check_toolchain_works {
 
 # RISC-V 64-bit cross-compiler
 function riscv64_env {
+    local config="${1:-}"
     local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
+
+    # A210 needs the Xuantie toolchain
+    if is_a210_board "${config}"; then
+        extract_xuantie_toolchain || true
+    fi
 
     # Try system toolchain first
     if command -v riscv64-linux-gnu-gcc &> /dev/null; then
