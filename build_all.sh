@@ -27,8 +27,10 @@ function generate_gpt_image {
     local gptcfg="${SRC}/config/gpt_emmc_android.txt"
     if [ "${emmc_size}" = "32G" ]; then
         gptcfg="${SRC}/config/gpt_emmc_android_32g.txt"
+    elif [ "${emmc_size}" = "64G" ]; then
+        gptcfg="${SRC}/config/gpt_emmc_android_64g.txt"
     elif [ "${emmc_size}" != "8G" ]; then
-        error_exit "Unsupported android.emmc_size: ${emmc_size} (expected 8G or 32G)"
+        error_exit "Unsupported android.emmc_size: ${emmc_size} (expected 8G, 32G or 64G)"
     fi
 
     echo "Generating GPT primary-table image (${emmc_size})..."
