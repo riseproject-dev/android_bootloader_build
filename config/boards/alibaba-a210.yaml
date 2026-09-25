@@ -6,4 +6,4 @@ uboot:
 
 android:
   binaries_path: vendor/alibaba/a210/bootloader
-  emmc_size: 8G
+  emmc_size: 64G
