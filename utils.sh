@@ -208,18 +208,6 @@ function check_riscv64 {
     fi
 }
 
-# Legacy ARM functions (kept for compatibility, but not used for Spacemit)
-function gnueabihf_env {
-    export PATH="${TOOLCHAINS}/arm-gnu-toolchain-13.3.rel1-x86_64-arm-none-linux-gnueabihf/bin:$PATH"
-    export CROSS_COMPILE=arm-none-linux-gnueabihf-
-}
-
-function aarch64_env {
-    export PATH="${TOOLCHAINS}/arm-gnu-toolchain-13.3.rel1-x86_64-aarch64-none-linux-gnu/bin:$PATH"
-    export CROSS_COMPILE=aarch64-none-linux-gnu-
-    export CROSS_COMPILE64=aarch64-none-linux-gnu-
-}
-
 function avbtool_env {
     if [ -d "${ROOT}/prebuilts/build-tools/linux-x86/bin/" ]; then
         export PATH="${ROOT}/prebuilts/build-tools/linux-x86/bin/:$PATH"
