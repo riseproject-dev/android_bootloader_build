@@ -50,9 +50,6 @@ function build_all {
     build_opensbi "${config}" "${clean}" "${mode}"
     build_uboot "${config}" "${clean}" "${mode}"
 
-    # copy kernel dtb to out
-    cp "${SRC}"/downloads/*.dtb "${out_dir}"
-
     # create fit image
     ITS_FILE="${UBOOT_DIR}/board/zhihe/${plat}/riscv-boot.its"
     GENDISK="${UBOOT_DIR}/board/zhihe/common/script/gendisk.sh"

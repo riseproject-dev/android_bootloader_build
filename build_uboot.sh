@@ -54,6 +54,7 @@ function build_uboot {
     make u-boot.img
     cp u-boot.bin "${out_dir}/u-boot.bin"
     cp spl/u-boot-spl.bin "${out_dir}/u-boot-spl.bin"
+    cp arch/riscv/dts/a210.dtb "${out_dir}/a210.dtb"
 
     # generate emmc-uboot_env.img
     make envtools
