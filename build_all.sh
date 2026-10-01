@@ -65,6 +65,14 @@ function build_all {
 
     # generate GPT primary-table image
     generate_gpt_image "${config}" "${out_dir}"
+
+    # clean up out dir
+    rm "${out_dir}/btz-with-spl-rvbl.bin"
+    rm "${out_dir}/fw_dynamic.bin"
+    rm "${out_dir}/u-boot.bin"
+    rm "${out_dir}/a210.dtb"
+    rm "${out_dir}/riscv-boot.hash"
+    rm "${out_dir}/riscv-boot.itb"
 }
 
 if [ "$0" = "$BASH_SOURCE" ]; then
