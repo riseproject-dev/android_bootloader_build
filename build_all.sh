@@ -50,11 +50,6 @@ function build_all {
     build_opensbi "${config}" "${clean}" "${mode}"
     build_uboot "${config}" "${clean}" "${mode}"
 
-    # extract boot binaries from zhihesdk
-    tar xzf "${SRC}/downloads/zhihesdk-local-a210_evb.tar.gz" \
-        --strip-components=2 -C "${out_dir}" \
-        --wildcards "rootfs/boot/*.bin"
-
     # copy kernel dtb to out
     cp "${SRC}"/downloads/*.dtb "${out_dir}"
 
@@ -65,10 +60,11 @@ function build_all {
     ${GENDISK} --fit "${ITS_FILE}" "${out_dir}" "${out_dir}/riscv-boot.itb"
 
     # generate loader image
-    BOOTZERO=bootzero2.bin # (a210)
-    ${GENDISK} --image "${out_dir}/${BOOTZERO}" "${out_dir}/u-boot-spl.bin" \
-               "${out_dir}/riscv-boot.itb" "${out_dir}"
-    cp "${out_dir}/btz-with-uboot-rvbl.bin" "${out_dir}/emmc_boot-loader.img"
+    ${GENDISK} --image "${SRC}/bootzero/bootzero2.bin" \
+                       "${UBOOT_DIR}/spl/u-boot-spl.bin" \
+                       "${out_dir}/riscv-boot.itb" \
+                       "${out_dir}"
+    mv "${out_dir}/btz-with-uboot-rvbl.bin" "${out_dir}/emmc_boot-loader.img"
 
     # generate GPT primary-table image
     generate_gpt_image "${config}" "${out_dir}"
