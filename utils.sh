@@ -47,164 +47,26 @@ function check_local_changes {
     done
 }
 
-# RISC-V toolchain - use bootlin toolchain (glibc, stable)
-# Using 2023.11-1 for better glibc compatibility (requires glibc 2.31+)
-RISCV_TOOLCHAIN_VERSION="2023.11-1"
-RISCV_TOOLCHAIN_NAME="riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
-RISCV_TOOLCHAIN_URL="https://toolchains.bootlin.com/downloads/releases/toolchains/riscv64-lp64d/tarballs/${RISCV_TOOLCHAIN_NAME}.tar.bz2"
+# RISC-V cross-compiler: kernel.org "crosstool" GCC (nolibc).
+RISCV_TOOLCHAIN_VERSION="14.2.0"
+RISCV_TOOLCHAIN_TARBALL="x86_64-gcc-${RISCV_TOOLCHAIN_VERSION}-nolibc-riscv64-linux.tar.xz"
+RISCV_TOOLCHAIN_URL="https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/${RISCV_TOOLCHAIN_VERSION}/${RISCV_TOOLCHAIN_TARBALL}"
+RISCV_TOOLCHAIN_DIR="${TOOLCHAINS}/gcc-${RISCV_TOOLCHAIN_VERSION}-nolibc/riscv64-linux"
+RISCV_CROSS_COMPILE="riscv64-linux-"
 
-# Buildroot toolchain path (if available)
-XUANTIE_TOOLCHAIN_NAME="xuantie-gnu-toolchain-3.0.1"
-XUANTIE_TOOLCHAIN_TARBALL="${BUILD}/downloads/${XUANTIE_TOOLCHAIN_NAME}.tar.gz"
-BUILDROOT_TOOLCHAIN="${TOOLCHAINS}/${XUANTIE_TOOLCHAIN_NAME}/bin"
-
-# The Bootlin toolchain (used by default, see riscv64_env below) is not
-# compatible with the Alibaba A210: it needs the Xuantie toolchain shipped
-# (via Git LFS) in downloads/. Detect that board so we can extract it
-# automatically instead of silently falling back to the incompatible Bootlin
-# toolchain.
-function is_a210_board {
-    local config="${1:-}"
-    [ -z "${config}" ] && return 1
-    local plat=$(config_value "${config}" plat)
-    [[ "${plat}" == "a210" ]]
-}
-
-function extract_xuantie_toolchain {
-    local toolchain_dir="${TOOLCHAINS}/${XUANTIE_TOOLCHAIN_NAME}"
-
-    if [ -d "${toolchain_dir}" ]; then
-        return 0
-    fi
-
-    if [ ! -f "${XUANTIE_TOOLCHAIN_TARBALL}" ]; then
-        warning "Xuantie toolchain not found (expected tarball at ${XUANTIE_TOOLCHAIN_TARBALL})"
-        return 1
-    fi
-
-    if head -c 30 "${XUANTIE_TOOLCHAIN_TARBALL}" | grep -q "git-lfs"; then
-        error_exit "${XUANTIE_TOOLCHAIN_TARBALL} is a Git LFS pointer, not the actual archive.
-        Run 'git lfs pull' in this repo to fetch it, then re-run the build."
-    fi
-
-    echo "Extracting Xuantie toolchain (required for A210) to ${TOOLCHAINS}..."
-    mkdir -p "${TOOLCHAINS}"
-    tar xzf "${XUANTIE_TOOLCHAIN_TARBALL}" -C "${TOOLCHAINS}"
-    echo "Xuantie toolchain installed to ${toolchain_dir}"
-}
-
-# Download and extract RISC-V toolchain
-function download_riscv64_toolchain {
-    local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
-
-    echo "Downloading RISC-V toolchain from Bootlin (${RISCV_TOOLCHAIN_VERSION})..."
-    mkdir -p "${TOOLCHAINS}"
-
-    if ! command -v wget &> /dev/null && ! command -v curl &> /dev/null; then
-        error_exit "wget or curl is required to download toolchain"
-    fi
-
-    if command -v wget &> /dev/null; then
-        wget -q --show-progress -O "${tarball}" "${RISCV_TOOLCHAIN_URL}"
-    else
-        curl -L -# -o "${tarball}" "${RISCV_TOOLCHAIN_URL}"
-    fi
-
-    echo "Extracting toolchain..."
-    tar -xjf "${tarball}" -C "${TOOLCHAINS}"
-
-    rm -f "${tarball}"
-    echo "RISC-V toolchain installed to ${toolchain_dir}"
-}
-
-# Check if a toolchain works (glibc compatibility)
-function check_toolchain_works {
-    local gcc_path="$1"
-    if [ -x "${gcc_path}" ]; then
-        # Try to run gcc --version to check glibc compatibility
-        "${gcc_path}" --version &> /dev/null
-        return $?
-    fi
-    return 1
-}
-
-# RISC-V 64-bit cross-compiler
 function riscv64_env {
-    local config="${1:-}"
-    local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
-
-    # A210 needs the Xuantie toolchain
-    if is_a210_board "${config}"; then
-        extract_xuantie_toolchain || true
-    fi
-
-    # Try system toolchain first
-    if command -v riscv64-linux-gnu-gcc &> /dev/null; then
-        if check_toolchain_works "$(command -v riscv64-linux-gnu-gcc)"; then
-            export CROSS_COMPILE=riscv64-linux-gnu-
-            export ARCH=riscv
-            return
-        fi
-    fi
-
-    if command -v riscv64-unknown-linux-gnu-gcc &> /dev/null; then
-        if check_toolchain_works "$(command -v riscv64-unknown-linux-gnu-gcc)"; then
-            export CROSS_COMPILE=riscv64-unknown-linux-gnu-
-            export ARCH=riscv
-            return
-        fi
-    fi
-
-    # Try buildroot toolchain (check glibc compatibility)
-    if [ -x "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc" ]; then
-        if check_toolchain_works "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc"; then
-            export PATH="${BUILDROOT_TOOLCHAIN}:$PATH"
-            export CROSS_COMPILE=riscv64-unknown-linux-gnu-
-            export ARCH=riscv
-            return
-        else
-            warning "Buildroot toolchain found but incompatible with system glibc"
-        fi
-    fi
-
-    # Try downloaded bootlin toolchain
-    if [ -d "${toolchain_dir}/bin" ]; then
-        if check_toolchain_works "${toolchain_dir}/bin/riscv64-buildroot-linux-gnu-gcc"; then
-            export PATH="${toolchain_dir}/bin:$PATH"
-            export CROSS_COMPILE=riscv64-buildroot-linux-gnu-
-            export ARCH=riscv
-            return
-        fi
-    fi
-
-    # Download toolchain
-    echo "RISC-V toolchain not found or incompatible, downloading Bootlin toolchain..."
-    download_riscv64_toolchain
-    if [ -d "${toolchain_dir}/bin" ]; then
-        export PATH="${toolchain_dir}/bin:$PATH"
-        export CROSS_COMPILE=riscv64-buildroot-linux-gnu-
-        export ARCH=riscv
-    else
-        error_exit "Failed to setup RISC-V toolchain"
-    fi
+    export PATH="${RISCV_TOOLCHAIN_DIR}/bin:$PATH"
+    export CROSS_COMPILE="${RISCV_CROSS_COMPILE}"
+    export ARCH=riscv
 }
 
 function check_riscv64 {
-    local toolchain_dir="${TOOLCHAINS}/riscv64-lp64d--glibc--stable-${RISCV_TOOLCHAIN_VERSION}"
-
-    # Check if RISC-V toolchain exists
-    if command -v riscv64-linux-gnu-gcc &> /dev/null; then
-        return 0
-    elif command -v riscv64-unknown-linux-gnu-gcc &> /dev/null; then
-        return 0
-    elif [ -x "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc" ]; then
-        return 0
-    elif [ -d "${toolchain_dir}/bin" ]; then
-        return 0
-    else
-        warning "RISC-V toolchain not found in PATH or ${TOOLCHAINS}"
-        warning "It will be downloaded automatically when building"
-        return 1
+    if [ ! -x "${RISCV_TOOLCHAIN_DIR}/bin/${RISCV_CROSS_COMPILE}gcc" ]; then
+        echo "Downloading RISC-V toolchain ..."
+        local tarball="${TOOLCHAINS}/${RISCV_TOOLCHAIN_TARBALL}"
+        wget -q --show-progress -O "${tarball}" "${RISCV_TOOLCHAIN_URL}"
+        tar -xJf "${tarball}" -C "${TOOLCHAINS}"
+        rm -f "${tarball}"
     fi
 }
 
@@ -227,8 +89,8 @@ function check_env {
     # toolchains directory
     ! [ -d "${TOOLCHAINS}" ] && mkdir -p "${TOOLCHAINS}"
 
-    # Check RISC-V toolchain
-    check_riscv64 || true
+    # check RISC-V toolchain
+    check_riscv64
 }
 
 function config_value {
