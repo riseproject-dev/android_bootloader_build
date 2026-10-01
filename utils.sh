@@ -67,7 +67,7 @@ function is_a210_board {
     local config="${1:-}"
     [ -z "${config}" ] && return 1
     local plat=$(config_value "${config}" plat)
-    [[ "${plat}" == "a210-evb" ]]
+    [[ "${plat}" == "a210" ]]
 }
 
 function extract_xuantie_toolchain {
