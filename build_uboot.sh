@@ -55,7 +55,7 @@ function build_uboot {
     cp arch/riscv/dts/a210.dtb "${out_dir}/a210.dtb"
 
     # generate emmc-uboot_env.img
-    make envtools
+    make u-boot-initial-env
     UBOOT_ENV_SIZE=$(grep CONFIG_ENV_SIZE .config | cut -d'=' -f2)
     ./tools/mkenvimage -s ${UBOOT_ENV_SIZE} \
                        -o "${out_dir}/emmc-uboot_env.img" \
