@@ -33,43 +33,6 @@ function add_commit_msg {
     popd
 }
 
-function copy_binaries {
-    local out="$1"
-    local android_out="$2"
-    local mode="$3"
-
-    # OpenSBI firmware
-    [ -f "${out}/fw_dynamic-${mode}.bin" ] && cp "${out}/fw_dynamic-${mode}.bin" "${android_out}/"
-    [ -f "${out}/fw_dynamic.itb" ]         && cp -f "${out}/fw_dynamic.itb"     "${android_out}/"
-
-    # U-Boot
-    if [ -f "${out}/u-boot-${mode}.itb" ]; then
-        cp "${out}/u-boot-${mode}.itb" "${android_out}/"
-    elif [ -f "${out}/u-boot-${mode}.bin" ]; then
-        cp "${out}/u-boot-${mode}.bin" "${android_out}/"
-    fi
-    [ -f "${out}/u-boot-spl-${mode}.bin" ] && cp "${out}/u-boot-spl-${mode}.bin" "${android_out}/"
-    [ -f "${out}/u-boot-${mode}.dtb" ]     && cp "${out}/u-boot-${mode}.dtb"     "${android_out}/"
-    [ -f "${out}/env-${mode}.bin" ]        && cp "${out}/env-${mode}.bin"       "${android_out}/"
-    [ -f "${out}/emmc-uboot_env.img" ]     && cp -f "${out}/emmc-uboot_env.img" "${android_out}/"
-
-    # Alibaba A210 (Zhihe) eMMC boot chain
-    [ -f "${out}/bootzero-rvbl.bin" ]        && cp -f "${out}/bootzero-rvbl.bin"        "${android_out}/"
-    [ -f "${out}/spl-with-fit-rvbl.bin" ]    && cp -f "${out}/spl-with-fit-rvbl.bin"    "${android_out}/"
-    [ -f "${out}/emmc_boot-loader.img" ]     && cp -f "${out}/emmc_boot-loader.img"     "${android_out}/"
-    [ -f "${out}/emmc-gpt_primary.img" ]     && cp -f "${out}/emmc-gpt_primary.img"     "${android_out}/"
-
-    # Flash-ready files (factory blobs, partition layout)
-    if [ -d "${out}/factory" ]; then
-        mkdir -p "${android_out}/factory"
-        cp -f "${out}/factory"/* "${android_out}/factory/"
-    fi
-    [ -f "${out}/partition_android.json" ] && cp -f "${out}/partition_android.json" "${android_out}/"
-    [ -f "${out}/partition_nor.json" ]     && cp -f "${out}/partition_nor.json"     "${android_out}/"
-
-    return 0
-}
-
 function usage {
     cat <<DELIM__
 usage: $(basename "$0") [options]
@@ -151,7 +114,7 @@ function main {
                 fi
             fi
             ! [ -d "${aosp}/${binaries_path}" ] && mkdir -p "${aosp}/${binaries_path}"
-            copy_binaries "${out_dir}" "${aosp}/${binaries_path}" "${mode}"
+            cp "${out_dir}/"* "${aosp}/${binaries_path}"
         done
         commit_title_prefix=$(board_name ${board_config})
         add_commit_msg commits_msg "${commit_title_prefix}" "${aosp}/${binaries_path}"
