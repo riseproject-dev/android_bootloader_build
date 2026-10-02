@@ -8,9 +8,9 @@ SRC=$(dirname "$(readlink -e "$0")")
 source "${SRC}/build_all.sh"
 source "${SRC}/commit-binaries.sh"
 
-# SpacemiT K1 projects in this repo tree
-PROJECTS_AIOT=("pi-opensbi" "pi-u-boot" "build-bootloaders")
-PROJECTS_REMOTES="spacemit github"
+# Alibaba a210 projects in this repo tree
+PROJECTS_AIOT=("opensbi" "u-boot" "build-bootloaders")
+PROJECTS_REMOTES="baydroid"
 
 function add_commit_msg {
     local -n commits_msg_ref="$1"
