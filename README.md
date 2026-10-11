@@ -43,10 +43,15 @@ partitions, and its DFU path creates the UFS GPT from U-Boot's compiled
 `partitions` environment. The delivered `partition_nor.json` describes the
 NOR offsets; it does not create an Android GPT.
 
-The old `config/partition_android.json` and `gen_imgcfg.py` are retained as
-legacy sources. They do not describe the active K3 storage contract and are
-not generated or staged by this branch. SD/genimage and vendor JSON
+The K1 Android JSON partition layout is excluded from this branch.
+`gen_imgcfg.py` remains a legacy utility and does not describe the active K3
+storage contract. SD/genimage and vendor JSON
 `multi_flash` workflows are unsupported; `--sdcard` fails explicitly.
+
+SPL loads the combined U-Boot FIT at NOR offset `0x210000`. This FIT includes
+OpenSBI in both debug and release builds; the flasher does not write the
+standalone OpenSBI image into the legacy NOR slot. Environment images are
+64 KiB to fit the existing NOR environment partition.
 
 The NOR bootinfo still carries the vendor fallback SPL1 offset `0xa0000`,
 which is also the environment slot. The shipped flasher programs only the
