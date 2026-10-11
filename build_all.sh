@@ -26,7 +26,7 @@ function build_all {
     # SpacemiT K3 boot chain: OpenSBI -> U-Boot -> Android flash images
     build_opensbi "${config}" "${clean}" "${mode}"
     build_uboot "${config}" "${clean}" "${mode}"
-    prepare_android_images "${config}" "${mode}" "${out_dir}" "false"
+    prepare_android_images "${config}" "${mode}" "${out_dir}"
 
     # secure package
     if [[ "${mode}" == "factory" ]]; then

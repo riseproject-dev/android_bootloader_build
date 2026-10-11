@@ -56,7 +56,6 @@ function copy_binaries {
         mkdir -p "${android_out}/factory"
         cp -f "${out}/factory"/* "${android_out}/factory/"
     fi
-    [ -f "${out}/partition_android.json" ] && cp -f "${out}/partition_android.json" "${android_out}/"
     [ -f "${out}/partition_nor.json" ]     && cp -f "${out}/partition_nor.json"     "${android_out}/"
 }
 

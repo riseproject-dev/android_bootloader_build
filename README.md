@@ -34,3 +34,21 @@ bash build_uboot.sh --config=config/boards/spacemit-k3.yaml --mode=release
 ```
 
 Rebuild Android after refreshing the vendor prebuilts.
+
+## K3 flash artifacts
+
+The Pico-ITX boot chain lives in SPI-NOR; Android lives on UFS/SCSI device 0.
+Use the Android product's `flash_pico_itx.sh` helper. It writes named raw NOR
+partitions, and its DFU path creates the UFS GPT from U-Boot's compiled
+`partitions` environment. The delivered `partition_nor.json` describes the
+NOR offsets; it does not create an Android GPT.
+
+The old `config/partition_android.json` and `gen_imgcfg.py` are retained as
+legacy sources. They do not describe the active K3 storage contract and are
+not generated or staged by this branch. SD/genimage and vendor JSON
+`multi_flash` workflows are unsupported; `--sdcard` fails explicitly.
+
+The NOR bootinfo still carries the vendor fallback SPL1 offset `0xa0000`,
+which is also the environment slot. The shipped flasher programs only the
+primary SPL0 at `0x20000`. BROM fallback to a second SPL copy has not been
+validated on hardware.

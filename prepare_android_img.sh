@@ -22,7 +22,6 @@ function usage {
     echo "  --config=FILE     Board configuration YAML file (required)"
     echo "  --mode=MODE       Build mode: release or debug (default: debug)"
     echo "  --out=DIR         Output directory (default: auto from config)"
-    echo "  --sdcard          Generate sdcard image using genimage"
     echo "  --help            Show this help"
     exit 1
 }
@@ -148,147 +147,12 @@ function copy_partition_configs {
 
     echo "Copying partition configurations..."
 
-    # Copy Android partition config
-    if [ -f "${CONFIG_DIR}/partition_android.json" ]; then
-        cp -f "${CONFIG_DIR}/partition_android.json" "${out_dir}/"
-    fi
-
     # Copy SPI-NOR bootloader layout (MTD) for the K3 SPI-NOR boot chain
     if [ -f "${CONFIG_DIR}/partition_nor.json" ]; then
         cp -f "${CONFIG_DIR}/partition_nor.json" "${out_dir}/"
     fi
 
-    # Create size-based partition links for fastboot
-    # These are typically partition_<blk-size>.json
-    if [ -f "${out_dir}/partition_android.json" ]; then
-        # Common block sizes: 512B sectors, so 16GB = 16384M, etc.
-        ln -sf partition_android.json "${out_dir}/partition_16384M.json" 2>/dev/null || true
-        ln -sf partition_android.json "${out_dir}/partition_32768M.json" 2>/dev/null || true
-        ln -sf partition_android.json "${out_dir}/partition_65536M.json" 2>/dev/null || true
-    fi
-
     echo "Partition configs copied"
-}
-
-function create_fastboot_yaml {
-    local out_dir="$1"
-    local yaml_file="${out_dir}/fastboot.yaml"
-
-    echo "Creating fastboot.yaml..."
-
-    cat > "${yaml_file}" << 'EOF'
-version: 1.0
-support:
-  - 'k3'
-actions:
-
-  - getvar:
-      args: 'version-brom'
-      set: 'version'
-      skip_fail: true
-      timeout:
-        seconds: 1
-
-  - stage:
-      file: 'factory/FSBL.bin'
-      skip_when: "not temp.version"
-      timeout:
-        minutes: 2
-
-  - continue:
-      skip_when: "not temp.version"
-      timeout:
-        seconds: 1
-
-  - stage:
-      file: 'u-boot.itb'
-      skip_when: "not temp.version"
-      timeout:
-        minutes: 2
-      retry: 3
-
-  - continue:
-      skip_when: "not temp.version"
-      timeout:
-        seconds: 1
-
-  - getvar:
-      args: 'mtd-size'
-      set_var: 'size0'
-      timeout:
-        seconds: 1
-
-  - getvar:
-      args: 'blk-size'
-      set_var: 'size1'
-      timeout:
-        seconds: 1
-
-  - multi_flash:
-      timeout:
-        minutes: 30
-      retry: 3
-      relate_partition: ['partition_{size0}.json', 'partition_{size1}.json']
-EOF
-
-    echo "Created: ${yaml_file}"
-}
-
-function generate_genimage_cfg {
-    local out_dir="$1"
-    local partition_json="${out_dir}/partition_android.json"
-    local genimage_cfg="${out_dir}/genimage.cfg"
-    local image_name="android-k3-sdcard.img"
-
-    echo "Generating genimage.cfg..."
-
-    if [ ! -f "${partition_json}" ]; then
-        echo "Warning: partition_android.json not found, skipping genimage.cfg"
-        return 0
-    fi
-
-    python3 "${SRC}/gen_imgcfg.py" \
-        -i "${partition_json}" \
-        -n "${image_name}" \
-        -o "${genimage_cfg}"
-}
-
-function generate_sdcard_image {
-    local out_dir="$1"
-    local genimage_cfg="${out_dir}/genimage.cfg"
-
-    if [ ! -f "${genimage_cfg}" ]; then
-        echo "Warning: genimage.cfg not found, skipping sdcard image"
-        return 0
-    fi
-
-    echo "Generating sdcard image..."
-
-    # Check for genimage tool
-    local genimage_cmd=""
-    if command -v genimage &> /dev/null; then
-        genimage_cmd="genimage"
-    else
-        echo "Warning: genimage not found, skipping sdcard image generation"
-        echo "Install genimage or use Buildroot's host tools"
-        return 0
-    fi
-
-    local tmp_dir=$(mktemp -d)
-    local root_dir="${tmp_dir}/root"
-    mkdir -p "${root_dir}"
-
-    # Run genimage
-    ${genimage_cmd} \
-        --rootpath "${root_dir}" \
-        --tmppath "${tmp_dir}/tmp" \
-        --inputpath "${out_dir}" \
-        --outputpath "${out_dir}" \
-        --config "${genimage_cfg}"
-
-    rm -rf "${tmp_dir}"
-
-    echo "Sdcard image generated in ${out_dir}"
 }
 
 function create_flash_zip {
@@ -305,10 +169,7 @@ function create_flash_zip {
         "fw_dynamic.itb"
         "u-boot.itb"
         "env.bin"
-        "partition_android.json"
-        "partition_*.json"
-        "fastboot.yaml"
-        "genimage.cfg"
+        "partition_nor.json"
     )
 
     # Add factory directory
@@ -336,7 +197,6 @@ function prepare_android_images {
     local config="$1"
     local mode="${2:-debug}"
     local out_dir="${3:-}"
-    local gen_sdcard="${4:-false}"
 
     if [ -z "${out_dir}" ]; then
         out_dir=$(out_dir "${config}" "${mode}")
@@ -368,17 +228,6 @@ function prepare_android_images {
     # Copy partition configs
     copy_partition_configs "${out_dir}"
 
-    # Create fastboot.yaml
-    create_fastboot_yaml "${out_dir}"
-
-    # Generate genimage.cfg
-    generate_genimage_cfg "${out_dir}"
-
-    # Optionally generate sdcard image
-    if [ "${gen_sdcard}" = "true" ]; then
-        generate_sdcard_image "${out_dir}"
-    fi
-
     # Create flash archive
     create_flash_zip "${out_dir}" "${config}"
 
@@ -398,7 +247,6 @@ function prepare_android_main {
     local config=""
     local mode="debug"
     local out_dir=""
-    local gen_sdcard="false"
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -415,8 +263,7 @@ function prepare_android_main {
                 shift
                 ;;
             --sdcard)
-                gen_sdcard="true"
-                shift
+                error_exit "K3 SD images are unsupported; use flash_pico_itx.sh for SPI-NOR and UFS"
                 ;;
             --help|-h)
                 usage
@@ -444,7 +291,7 @@ function prepare_android_main {
         fi
     fi
 
-    prepare_android_images "${config}" "${mode}" "${out_dir}" "${gen_sdcard}"
+    prepare_android_images "${config}" "${mode}" "${out_dir}"
 }
 
 if [ "$0" = "$BASH_SOURCE" ]; then
