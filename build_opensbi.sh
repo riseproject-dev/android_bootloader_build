@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build OpenSBI for Spacemit K1
+# Build OpenSBI for SpacemiT K3
 
 set -e
 set -u
@@ -16,7 +16,7 @@ function build_opensbi {
     local mode="${3:-release}"
     local out_dir=$(out_dir "${config}" "${mode}")
 
-    # Pick the OpenSBI source tree (opensbi.src override, else pi-opensbi)
+    # Pick the OpenSBI source tree (opensbi.src override, else opensbi)
     resolve_src_dirs "${config}"
 
     display_current_build "${config}" "opensbi" "${mode}"
@@ -25,7 +25,7 @@ function build_opensbi {
     local platform=$(config_value "${config}" opensbi.platform)
     local extra_flags=$(config_value "${config}" opensbi.flags)
 
-    # Default platform for Spacemit K1
+    # Default platform for SpacemiT K3
     [ -z "${platform}" ] && platform="generic"
 
     # Setup environment
@@ -36,18 +36,14 @@ function build_opensbi {
 
     pushd "${OPENSBI_DIR}"
 
-    # Clean if requested. Use distclean (not just clean) to wipe build/.config
-    # too — otherwise a stale .config generated from the default upstream
-    # `defconfig` (which sets CONFIG_PLATFORM_SPACEMIT_K1PRO=y) sticks around
-    # and the subsequent `make … PLATFORM_DEFCONFIG=k1_defconfig` does not
-    # regenerate it because timestamps already satisfy the make rule.
+    # Remove any stale platform configuration when cleaning.
     if [[ "${clean}" == true ]]; then
         make PLATFORM="${platform}" distclean || true
     fi
 
     # Get defconfig from board config or use default
     local defconfig=$(config_value "${config}" opensbi.defconfig)
-    [ -z "${defconfig}" ] && defconfig="k1_defconfig"
+    [ -z "${defconfig}" ] && defconfig="defconfig"
 
     # Build flags based on mode
     local debug_flags=""

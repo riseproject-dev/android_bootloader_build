@@ -23,7 +23,7 @@ function build_all {
         rm -rf "${out_dir}"
     fi
 
-    # SpacemiT K1 boot chain: OpenSBI -> U-Boot -> Android flash images
+    # SpacemiT K3 boot chain: OpenSBI -> U-Boot -> Android flash images
     build_opensbi "${config}" "${clean}" "${mode}"
     build_uboot "${config}" "${clean}" "${mode}"
     prepare_android_images "${config}" "${mode}" "${out_dir}" "false"

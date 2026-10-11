@@ -1,65 +1,36 @@
-# Bootloader build tools — SpacemiT K1 (Banana Pi F3)
+# SpacemiT K3 bootloader build
 
-Scripts that build the bootloader chain for the SpacemiT K1 SoC on
-the Banana Pi F3 and stage the outputs into the AOSP tree under
-`vendor/spacemit/k1/bootloader/`.
+The K3 config selects upstream-based U-Boot and OpenSBI from the
+`u-boot/` and `opensbi/` sibling repositories. This branch contains only
+the K3 board config.
 
-The chain is **OpenSBI → U-Boot** (no ATF, no OP-TEE) and the
-sources are sibling repos `pi-opensbi/` and `pi-u-boot/`.
+## Build and stage
 
-## Dependencies
-
-```sh
-sudo apt install bc bison build-essential curl flex git libssl-dev \
-                 python3 python3-pip meson wget -y
-pip3 install pycryptodome pyelftools shyaml --user
-```
-
-The RISC-V cross-toolchain (Bootlin glibc 2023.11-1) is downloaded
-automatically on first build under `../toolchains/` — no manual
-install required.
-
-## Top-level: release_android.sh
-
-Builds the full chain and stages the outputs into an AOSP tree in
-one command:
+Requirements: a Linux host, `make`, `bison`, `flex`, `dtc`, Python 3,
+`shyaml`, and the build's RISC-V cross-toolchain. The scripts download their
+board's toolchain when needed.
 
 ```sh
-./release_android.sh --aosp=<path-to-aosp>
+bash release_android.sh --aosp=../../aosp --config=config/boards/spacemit-k3.yaml
 ```
 
-Options:
+This builds OpenSBI and U-Boot, assembles flash images and stages them in
+`vendor/rise/spacemit/k3/bootloader/`. Run from this repository inside the sibling
+bootloader checkout described by the RISE manifest documentation.
 
-| Option | Description |
-|---|---|
-| `--aosp=PATH`    | AOSP root path (required) |
-| `--commit`       | commit the new binaries into the AOSP-side vendor repo |
-| `--config=FILE`  | release a specific board config file (default: `config/boards/spacemit-k1.yaml`) |
-| `--mode=MODE`    | `release`, `debug` or `factory` — build only one mode |
-| `--no-build`     | skip rebuild, just re-stage existing artefacts |
-| `--silent`       | silence build command output |
+Use `--mode=release` or `--mode=debug` to select a build mode, and
+`--no-build` to stage existing outputs. `--commit` explicitly commits
+staged binaries; the default stages files without creating commits.
+The default also leaves the Git index unchanged.
 
-## Building one component
+Individual components can be rebuilt with:
 
 ```sh
-./build_opensbi.sh --config=config/boards/spacemit-k1.yaml
-./build_uboot.sh   --config=config/boards/spacemit-k1.yaml
+bash build_opensbi.sh --config=config/boards/spacemit-k3.yaml --mode=release
 ```
-
-Common options on each: `--clean`, `--mode=[release|debug]`,
-`--help`.
-
-## Building everything for one board
 
 ```sh
-./build_all.sh --config=config/boards/spacemit-k1.yaml
+bash build_uboot.sh --config=config/boards/spacemit-k3.yaml --mode=release
 ```
 
-## Helpers
-
-| Script | Purpose |
-|---|---|
-| `setup_android.sh --aosp=PATH --branch=BR` | initial AOSP-side branch prep for binary commits |
-| `prepare_android_img.sh --config=... [--mode=...]` | assemble outputs under `out/` into the flash layout |
-| `commit-binaries.sh --from-repo=... --to-repo=... --to-project=...` | commit refreshed binaries with a generated message |
-| `secure.sh` | (placeholder) signing hook for factory builds |
+Rebuild Android after refreshing the vendor prebuilts.

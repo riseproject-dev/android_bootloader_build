@@ -1,5 +1,5 @@
 #!/bin/bash
-# Spacemit K1 Bootloader Build Utilities
+# SpacemiT K3 Bootloader Build Utilities
 # Adapted from TI build system for RISC-V
 
 BUILD=$(dirname "$(readlink -e "$0")")
@@ -12,11 +12,10 @@ INIT_PATH=$PATH
 
 # Source directories (defaults). These may be overridden per board via the
 # optional yaml keys opensbi.src / uboot.src, see resolve_src_dirs().
-OPENSBI_DIR="${ROOT}/pi-opensbi"
-UBOOT_DIR="${ROOT}/pi-u-boot"
+OPENSBI_DIR="${ROOT}/opensbi"
+UBOOT_DIR="${ROOT}/u-boot"
 
-# Defaults kept verbatim so resolve_src_dirs() can fall back to them when a
-# board config does not set opensbi.src / uboot.src (i.e. the K1 case).
+# Source directory defaults for board configs without explicit paths.
 OPENSBI_DIR_DEFAULT="${OPENSBI_DIR}"
 UBOOT_DIR_DEFAULT="${UBOOT_DIR}"
 
@@ -60,9 +59,6 @@ function check_local_changes {
 RISCV_TOOLCHAIN_VERSION="v1.2.4"
 RISCV_TOOLCHAIN_NAME="spacemit-toolchain-linux-glibc-x86_64-${RISCV_TOOLCHAIN_VERSION}"
 RISCV_TOOLCHAIN_URL="http://archive.spacemit.com/toolchain/${RISCV_TOOLCHAIN_NAME}.tar.xz"
-
-# Buildroot toolchain path (if available)
-BUILDROOT_TOOLCHAIN="/srv/spacemit/buildroot/output/k1_v2/host/bin"
 
 # Download and extract RISC-V toolchain
 function download_riscv64_toolchain {
@@ -126,18 +122,6 @@ function riscv64_env {
         fi
     fi
 
-    # Try buildroot toolchain (check glibc compatibility)
-    if [ -x "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc" ]; then
-        if check_toolchain_works "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc"; then
-            export PATH="${BUILDROOT_TOOLCHAIN}:$PATH"
-            export CROSS_COMPILE=riscv64-unknown-linux-gnu-
-            export ARCH=riscv
-            return
-        else
-            warning "Buildroot toolchain found but incompatible with system glibc"
-        fi
-    fi
-
     # Try downloaded SpacemiT toolchain
     if [ -d "${toolchain_dir}/bin" ]; then
         if check_toolchain_works "${toolchain_dir}/bin/riscv64-unknown-linux-gnu-gcc"; then
@@ -167,8 +151,6 @@ function check_riscv64 {
     if command -v riscv64-linux-gnu-gcc &> /dev/null; then
         return 0
     elif command -v riscv64-unknown-linux-gnu-gcc &> /dev/null; then
-        return 0
-    elif [ -x "${BUILDROOT_TOOLCHAIN}/riscv64-unknown-linux-gnu-gcc" ]; then
         return 0
     elif [ -d "${toolchain_dir}/bin" ]; then
         return 0
@@ -223,9 +205,7 @@ function config_value {
 #
 # A board yaml may set optional keys opensbi.src / uboot.src pointing at the
 # source tree to build (absolute, or relative to ROOT = build-bootloaders/..).
-# When a key is absent the historical default is kept (pi-opensbi / pi-u-boot),
-# so the K1 config is unaffected. Both variables are exported so the helper
-# scripts sourced later (prepare_android_img.sh) observe the same values.
+# Both variables are exported so sourced image helpers use the same trees.
 function resolve_src_dirs {
     local config="$1"
     local opensbi_src=$(config_value "${config}" opensbi.src)
@@ -280,7 +260,7 @@ function usage {
     cat <<DELIM__
 usage: $(basename "$0") [options]
 
-$ $(basename "$0") --config=config/boards/spacemit-k1.yaml
+$ $(basename "$0") --config=config/boards/spacemit-k3.yaml
 
 Options:
   --config   board config file

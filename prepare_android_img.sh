@@ -1,5 +1,5 @@
 #!/bin/bash
-# Prepare Android images for Spacemit K1
+# Prepare Android images for SpacemiT K3
 # Based on Buildroot's prepare_img.sh
 
 set -e
@@ -12,7 +12,7 @@ if ! type -t config_value &>/dev/null; then
 fi
 
 # Default paths
-UBOOT_DIR="${UBOOT_DIR:-$(dirname "${SRC}")/pi-u-boot}"
+UBOOT_DIR="${UBOOT_DIR:-$(dirname "${SRC}")/u-boot}"
 CONFIG_DIR="${SRC}/config"
 
 function usage {
@@ -41,10 +41,7 @@ function prepare_factory_files {
         error_exit "FSBL.bin not found in ${UBOOT_DIR}"
     fi
 
-    # Copy bootinfo files. The exact set is board-specific: K1 emits
-    # bootinfo_{spinor,spinand,emmc,sd}.bin, K3 emits
-    # bootinfo_{spinor,spinand,block}.bin. Require at least one rather than a
-    # specific medium so the step is not tied to a single SoC.
+    # Copy the bootinfo files generated for the available boot media.
     local bootinfo_count=0
     for bootinfo in "${UBOOT_DIR}"/bootinfo_*.bin; do
         if [ -f "${bootinfo}" ]; then
@@ -156,7 +153,7 @@ function copy_partition_configs {
         cp -f "${CONFIG_DIR}/partition_android.json" "${out_dir}/"
     fi
 
-    # Copy SPI-NOR bootloader layout (MTD) for NOR-boot boards (MUSE-Pi-Pro)
+    # Copy SPI-NOR bootloader layout (MTD) for the K3 SPI-NOR boot chain
     if [ -f "${CONFIG_DIR}/partition_nor.json" ]; then
         cp -f "${CONFIG_DIR}/partition_nor.json" "${out_dir}/"
     fi
@@ -182,8 +179,7 @@ function create_fastboot_yaml {
     cat > "${yaml_file}" << 'EOF'
 version: 1.0
 support:
-  - 'k1x'
-  - 'k1pro'
+  - 'k3'
 actions:
 
   - getvar:
@@ -242,7 +238,7 @@ function generate_genimage_cfg {
     local out_dir="$1"
     local partition_json="${out_dir}/partition_android.json"
     local genimage_cfg="${out_dir}/genimage.cfg"
-    local image_name="android-k1-sdcard.img"
+    local image_name="android-k3-sdcard.img"
 
     echo "Generating genimage.cfg..."
 
@@ -272,8 +268,6 @@ function generate_sdcard_image {
     local genimage_cmd=""
     if command -v genimage &> /dev/null; then
         genimage_cmd="genimage"
-    elif [ -x "/srv/spacemit/buildroot/output/k1_v2/host/bin/genimage" ]; then
-        genimage_cmd="/srv/spacemit/buildroot/output/k1_v2/host/bin/genimage"
     else
         echo "Warning: genimage not found, skipping sdcard image generation"
         echo "Install genimage or use Buildroot's host tools"
@@ -300,7 +294,7 @@ function generate_sdcard_image {
 function create_flash_zip {
     local out_dir="$1"
     local config="$2"
-    local zip_file="${out_dir}/android-k1-flash.zip"
+    local zip_file="${out_dir}/android-k3-flash.zip"
 
     echo "Creating flash archive..."
 
@@ -348,7 +342,7 @@ function prepare_android_images {
         out_dir=$(out_dir "${config}" "${mode}")
     fi
 
-    # Pick the U-Boot source tree (uboot.src override, else pi-u-boot) so the
+    # Pick the U-Boot source tree (uboot.src override, else u-boot) so the
     # factory blobs are read from the right tree. resolve_src_dirs may already
     # have run in build_uboot; calling it again is idempotent.
     if type -t resolve_src_dirs &>/dev/null; then
@@ -396,8 +390,7 @@ function prepare_android_images {
     echo "Files:"
     ls -la "${out_dir}/"
     echo ""
-    echo "To flash using titan tool:"
-    echo "  titan -d k1 -w --images ${out_dir}"
+    echo "Use the Android product flash_pico_itx.sh helper to flash the board."
     echo "============================================"
 }
 
