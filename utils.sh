@@ -1,5 +1,5 @@
 #!/bin/bash
-# Spacemit K1 Bootloader Build Utilities
+# Alibaba A210 Bootloader Build Utilities
 # Adapted from TI build system for RISC-V
 
 BUILD=$(dirname "$(readlink -e "$0")")
@@ -126,7 +126,7 @@ function usage {
     cat <<DELIM__
 usage: $(basename "$0") [options]
 
-$ $(basename "$0") --config=config/boards/spacemit-k1.yaml
+$ $(basename "$0") --config=config/boards/alibaba-a210.yaml
 
 Options:
   --config   board config file

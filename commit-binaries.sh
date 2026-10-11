@@ -15,7 +15,7 @@ $ $(basename "$0") --from-repo=<repo root directory> --to-repo=<repo root direct
 Options:
   --from-repo     Absolute path to the source repo
   --from-projects (OPTIONAL) space-separated list of relative source projects. Defaults to all
-  --from-remotes  (OPTIONAL) space-separated list of remotes to fetch the version information from. Defaults to "baylibre"
+  --from-remotes  (OPTIONAL) space-separated list of remotes to fetch the version information from. Defaults to "rise"
   --to-repo       Absolute path to the destination repo
   --to-project    Relative path in the destination repo where git commit is ran
   --title-prefix  (OPTIONAL) commit message title prefix. Defaults to "generic"
@@ -201,11 +201,7 @@ function commit_binaries {
     commit_msg=$(echo -e "${commit_title}${commit_body}")
     echo "${commit_msg}"
 
-    if [[ "${dry_run}" == true ]]; then
-        git add --all
-        git commit --dry-run -s -m "${commit_msg}"
-        git restore --staged .
-    else
+    if [[ "${dry_run}" != true ]]; then
         git add --all
         git commit --quiet -s -m "${commit_msg}"
     fi

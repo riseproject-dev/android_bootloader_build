@@ -85,10 +85,7 @@ function main {
             git branch --quiet -D "${branch}"
         fi
 
-        # detect remote: [baylibre]
-        local remote="baylibre"
-        local output=$(git remote | grep baylibre)
-        [ -n "${output}" ] && remote="baylibre"
+        local remote="rise"
 
         # create branch
         local repo_branch=$(repo --color=never info . 2>&1 | perl -ne 'print "$1" if /^Manifest revision: (.*)/')

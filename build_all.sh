@@ -9,7 +9,6 @@ if ! type -t config_value &>/dev/null; then
     source "${SRC}/utils.sh"
 fi
 source "${SRC}/secure.sh"
-source "${SRC}/prepare_android_img.sh"
 source "${SRC}/build_opensbi.sh"
 source "${SRC}/build_uboot.sh"
 source "${SRC}/gen_gpt_image.sh"

@@ -10,7 +10,7 @@ source "${SRC}/commit-binaries.sh"
 
 # Alibaba a210 projects in this repo tree
 PROJECTS_AIOT=("opensbi" "u-boot" "build-bootloaders")
-PROJECTS_REMOTES="baydroid"
+PROJECTS_REMOTES="rise origin"
 
 function add_commit_msg {
     local -n commits_msg_ref="$1"
@@ -43,7 +43,7 @@ Options:
   --aosp     Android Root path (required)
   --commit   (OPTIONAL) commit binaries in AOSP
   --config   (OPTIONAL) release ONLY for this board config file
-             (default: config/boards/spacemit-k1.yaml)
+             (default: config/boards/alibaba-a210.yaml)
   --help     (OPTIONAL) display usage
   --mode     (OPTIONAL) [release|debug|factory] build only one mode
   --no-build (OPTIONAL) don't rebuild the images

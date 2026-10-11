@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build OpenSBI for Spacemit K1
+# Build OpenSBI for Alibaba A210
 
 set -e
 set -u
@@ -22,7 +22,7 @@ function build_opensbi {
     local platform=$(config_value "${config}" opensbi.platform)
     local extra_flags=$(config_value "${config}" opensbi.flags)
 
-    # Default platform for Spacemit K1
+    # Default platform for Alibaba A210
     [ -z "${platform}" ] && platform="generic"
 
     # Setup environment
