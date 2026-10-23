@@ -1,0 +1,16 @@
+name: rise-notify
+
+on:
+  push:
+    branches: [spacemit-android-17]
+
+permissions: {}
+
+jobs:
+  bootloaders:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Request a bootloader update in android_vendor_rise
+        env:
+          GH_TOKEN: ${{ secrets.RISE_DISPATCH_TOKEN }}
+        run: gh api repos/riseproject-dev/android_vendor_rise/dispatches -f event_type=bootloader-update
